@@ -1,0 +1,164 @@
+substitutions:
+  disp_name: esp321
+  update_time: 10s
+  v_gain: "7391"
+  i_gain_50A1V_sct013: "38504"
+
+esphome:
+  name: emon-esp32-1
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret esp_api_key
+
+ota:
+  password: !secret esp_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret esp_fallback_ssid
+    password: !secret esp_fallback_password
+
+captive_portal:
+
+spi:
+  clk_pin: 18
+  miso_pin: 19
+  mosi_pin: 23
+
+# Enable time component to reset energy at midnight
+time:
+  - platform: sntp
+    id: my_time
+
+sensor:
+  - platform: wifi_signal
+    name: ${disp_name} WiFi
+    update_interval: 60s
+  # Board 1, Left Side
+  - platform: atm90e32
+    cs_pin: 5
+    phase_a:
+      voltage:
+        name: ${disp_name} B1L Volts
+        id: b1lVolts
+      current:
+        name: ${disp_name} B1L CT1 Amps
+        id: b1lct1Amps
+      gain_voltage: ${v_gain}
+      gain_ct: 28270
+    # 200A/100mA SCT024TSL-B27
+    phase_b:
+      current:
+        name: ${disp_name} B1L CT2 Amps
+        id: b1lct2Amps
+      gain_ct: 27041
+    # 200A/100mA SCT024TSL-B27
+    phase_c:
+      current:
+        name: ${disp_name} B1L CT3 Amps
+        id: b1lct3Amps
+      gain_ct: ${i_gain_50A1V_sct013}
+    frequency:
+      name: ${disp_name} Freq B
+    line_frequency: 60Hz
+    gain_pga: 1X
+    update_interval: ${update_time}
+  - platform: template
+    name: ${disp_name} B1L Amps
+    id: b1lAmps
+    lambda: return id(b1lct1Amps).state + id(b1lct2Amps).state + id(b1lct3Amps).state;
+    accuracy_decimals: 2
+    unit_of_measurement: A
+    update_interval: ${update_time}
+  - platform: template
+    name: ${disp_name} B1L Watts
+    id: b1lWatts
+    lambda: return id(b1lAmps).state * id(b1lVolts).state;
+    accuracy_decimals: 2
+    unit_of_measurement: W
+    icon: "mdi:flash-outline"
+    update_interval: ${update_time}
+  # Board 1, Right Side
+  - platform: atm90e32
+    cs_pin: 4
+    phase_a:
+      voltage:
+        name: ${disp_name} B1R Volts
+        id: b1rVolts
+      current:
+        name: ${disp_name} B1R CT4 Amps
+        id: b1rct4Amps
+      gain_voltage: ${v_gain}
+      gain_ct: ${i_gain_50A1V_sct013}
+      # 50A/1V SCT013
+    phase_b:
+      current:
+        name: ${disp_name} B1R CT5 Amps
+        id: b1rct5Amps
+      gain_ct: ${i_gain_50A1V_sct013}
+      # 50A/1V SCT013
+    phase_c:
+      current:
+        name: ${disp_name} B1R CT6 Amps
+        id: b1rct6Amps
+      gain_ct: ${i_gain_50A1V_sct013}
+      # 50A/1V SCT013
+    frequency:
+      name: ${disp_name} Freq B
+    line_frequency: 60Hz
+    gain_pga: 1X
+    update_interval: ${update_time}
+  - platform: template
+    name: ${disp_name} B1R Amps
+    id: b1rAmps
+    lambda: return id(b1rct4Amps).state + id(b1rct5Amps).state + id(b1rct6Amps).state;
+    accuracy_decimals: 2
+    unit_of_measurement: A
+    update_interval: ${update_time}
+  - platform: template
+    name: ${disp_name} B1R Watts
+    id: b1rWatts
+    lambda: return id(b1rAmps).state * id(b1rVolts).state;
+    accuracy_decimals: 2
+    unit_of_measurement: W
+    icon: "mdi:flash-outline"
+    update_interval: ${update_time}
+  # Board 1 Totals
+  - platform: template
+    name: ${disp_name} B1 Watts
+    id: b1Watts
+    lambda: return id(b1rWatts).state + id(b1lWatts).state;
+    accuracy_decimals: 2
+    unit_of_measurement: W
+    icon: "mdi:flash-outline"
+    update_interval: ${update_time}
+  # Totals
+  - platform: template
+    name: ${disp_name} Total Watts
+    id: totWatts
+    lambda: return id(b1Watts).state;
+    accuracy_decimals: 2
+    unit_of_measurement: W
+    icon: "mdi:flash-outline"
+    update_interval: ${update_time}
+  - platform: total_daily_energy
+    name: ${disp_name} Total kWh
+    power_id: totWatts
+    filters:
+      - multiply: 0.001
+    unit_of_measurement: kWh
+    icon: "mdi:flash"
