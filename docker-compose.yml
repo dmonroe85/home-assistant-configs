@@ -4,7 +4,7 @@ services:
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:stable"
     volumes:
-      - ./config/homeassistant:/config
+      - ./homeassistant/config:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     privileged: true
@@ -13,8 +13,24 @@ services:
     container_name: esphome
     image: esphome/esphome:2022.11
     volumes:
-      - ./config/esphome:/config
+      - ./esphome/config:/config
       - /etc/localtime:/etc/localtime:ro
     restart: always
     privileged: true
     network_mode: host
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:2.0.15
+    volumes:
+      - ./mosquitto/config:/mosquitto/config/
+      - ./mosquitto/log:/mosquitto/log/
+      - ./mosquitto/data:/mosquitto/data/
+    restart: always
+    # privileged: true
+    # network_mode: host
+    ports:
+      - 1883:1883
+      - 9001:9001
+
+volumes:
+  data: ~
