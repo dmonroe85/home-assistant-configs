@@ -1,6 +1,7 @@
 homeassistant/
 esphome/
 mosquitto/
+plex/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
